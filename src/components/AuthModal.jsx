@@ -31,7 +31,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         onClose();
         setFormData({ name: '', email: '', password: '' });
       } else {
-        setError('Signup Failed try again.');
+        setError('Signin Failed try again.');
       }
     } catch (err) {
       setError('Sign In error. Please try again.');

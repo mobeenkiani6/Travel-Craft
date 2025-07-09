@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Heart, Globe, Users, Award, Zap, Shield } from 'lucide-react';
-
 const About= () => {
   const features = [
     {
@@ -30,19 +29,19 @@ const About= () => {
     {
       name: 'Mobeen Zaheer',
       role: 'Founder & CEO',
-      image: "pic1.jpg",
+      image: "https://www.freepik.com/free-photo/waist-up-portrait-handsome-serious-unshaven-male-keeps-hands-together-dressed-dark-blue-shirt-has-talk-with-interlocutor-stands-against-white-wall-self-confident-man-freelancer_10421502.htm#fromView=search&page=1&position=1&uuid=b04f0cf5-06b6-475a-9127-b67c87278ba6&query=Man",
       description: 'Former travel industry executive with 2+ years of experience.'
     },
     {
       name: 'Abdul Moiz',
       role: 'CTO',
-      image: '',
+      image: "https://www.freepik.com/free-photo/full-length-portrait-confident-happy-man_6819509.htm#fromView=search&page=1&position=3&uuid=b04f0cf5-06b6-475a-9127-b67c87278ba6&query=Man",
       description: 'AI specialist who previously worked at Google and Microsoft.'
     },
     {
       name: 'Husnain Ali',
       role: 'Head of Product',
-      image: '',
+      image: "https://www.freepik.com/free-photo/portrait-handsome-smiling-stylish-young-man-model-dressed-red-checkered-shirt-fashion-man-posing_6601841.htm#fromView=search&page=1&position=5&uuid=b04f0cf5-06b6-475a-9127-b67c87278ba6&query=Man",
       description: 'Product design expert passionate about user experience.'
     }
   ];

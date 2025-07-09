@@ -36,17 +36,238 @@ const TripPlan = () => {
   }
 
   const handleDownload = () => {
-    // In a real app, this would generate and download a PDF
-    const tripData = JSON.stringify(currentTrip, null, 2);
-    const blob = new Blob([tripData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentTrip.destination}-trip-plan.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const createPDFContent = () => {
+      const getBudgetDisplay = (budget) => {
+        const icons = { cheap: '💵', moderate: '💰', luxury: '💎' };
+        const icon = icons[budget] || '💰';
+        const text = budget.charAt(0).toUpperCase() + budget.slice(1);
+        return `${icon} ${text}`;
+      };
+
+      const getTravelersDisplay = (travelers) => {
+        const icons = { solo: '✈️', couple: '👫', family: '🏠' };
+        const icon = icons[travelers] || '✈️';
+        const text = travelers.charAt(0).toUpperCase() + travelers.slice(1);
+        return `${icon} ${text}`;
+      };
+
+      const formatItinerary = () => {
+        return currentTrip.itinerary.map(dayPlan => `
+          <div style="margin-bottom: 30px; page-break-inside: avoid;">
+            <h3 style="color: #2563eb; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">
+              Day ${dayPlan.day}
+            </h3>
+            ${['morning', 'afternoon', 'evening'].map(timeSlot => {
+              const activity = dayPlan.activities.find(a => a.time === timeSlot);
+              if (!activity) return '';
+              
+              return `
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f8fafc; border-left: 4px solid #3b82f6; border-radius: 8px;">
+                  <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <strong style="color: #2563eb; text-transform: capitalize; font-size: 1.1em;">
+                      🕐 ${timeSlot}
+                    </strong>
+                  </div>
+                  <h4 style="margin: 10px 0; color: #1f2937; font-size: 1.2em;">${activity.title}</h4>
+                  <p style="color: #6b7280; margin: 8px 0; line-height: 1.5;">${activity.description}</p>
+                  ${activity.price ? `<div style="color: #059669; font-weight: 600; margin-top: 8px;">💰 ${activity.price}</div>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `).join('');
+      };
+
+      const formatHotels = () => {
+        return currentTrip.hotels.map(hotel => `
+          <div style="margin-bottom: 20px; padding: 20px; background-color: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb;">
+            <h4 style="color: #1f2937; margin: 0 0 10px 0; font-size: 1.3em;">${hotel.name}</h4>
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <span style="color: #6b7280;">📍 ${hotel.location}</span>
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <span style="color: #fbbf24;">⭐ ${hotel.rating}</span>
+            </div>
+            <div style="color: #2563eb; font-weight: bold; font-size: 1.1em;">${hotel.price}</div>
+          </div>
+        `).join('');
+      };
+
+      return `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Trip Plan - ${currentTrip.destination}</title>
+            <style>
+              body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                color: #374151;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 40px;
+                padding: 30px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 16px;
+              }
+              .header h1 {
+                margin: 0 0 10px 0;
+                font-size: 3em;
+                font-weight: bold;
+              }
+              .header p {
+                margin: 0;
+                font-size: 1.2em;
+                opacity: 0.9;
+              }
+              .trip-overview {
+                background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+                padding: 30px;
+                border-radius: 16px;
+                margin-bottom: 40px;
+                border: 1px solid #e5e7eb;
+              }
+              .overview-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 20px;
+                margin-top: 20px;
+              }
+              .overview-item {
+                background: white;
+                padding: 20px;
+                border-radius: 12px;
+                text-align: center;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+              }
+              .overview-item .label {
+                font-size: 0.9em;
+                color: #6b7280;
+                margin-bottom: 8px;
+              }
+              .overview-item .value {
+                font-size: 1.1em;
+                font-weight: bold;
+                color: #1f2937;
+              }
+              .section {
+                margin-bottom: 40px;
+              }
+              .section h2 {
+                color: #1f2937;
+                font-size: 2.2em;
+                margin-bottom: 25px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #3b82f6;
+              }
+              .page-break {
+                page-break-before: always;
+              }
+              .footer {
+                margin-top: 60px;
+                text-align: center;
+                color: #9ca3af;
+                font-size: 0.9em;
+                padding: 20px;
+                border-top: 2px solid #e5e7eb;
+              }
+              @media print {
+                body { 
+                  margin: 0; 
+                  padding: 15px;
+                }
+                .header { 
+                  page-break-after: avoid; 
+                  background: #667eea !important;
+                  -webkit-print-color-adjust: exact;
+                }
+                .trip-overview { 
+                  page-break-inside: avoid;
+                  background: #f0f9ff !important;
+                  -webkit-print-color-adjust: exact;
+                }
+                .section { 
+                  page-break-inside: avoid; 
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>🌍 ${currentTrip.destination}</h1>
+              <p>Complete Trip Plan & Itinerary</p>
+            </div>
+
+            <div class="trip-overview">
+              <h2 style="margin-top: 0; color: #1e40af;">Trip Overview</h2>
+              <div class="overview-grid">
+                <div class="overview-item">
+                  <div class="label">📅 Duration</div>
+                  <div class="value">${currentTrip.days} Days</div>
+                </div>
+                <div class="overview-item">
+                  <div class="label">💰 Budget</div>
+                  <div class="value">${getBudgetDisplay(currentTrip.budget)}</div>
+                </div>
+                <div class="overview-item">
+                  <div class="label">👥 Travelers</div>
+                  <div class="value">${getTravelersDisplay(currentTrip.travelers)}</div>
+                </div>
+                <div class="overview-item">
+                  <div class="label">✈️ Trip Type</div>
+                  <div class="value">Adventure</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h2>🏨 Hotel Recommendations</h2>
+              ${formatHotels()}
+            </div>
+
+            <div class="section page-break">
+              <h2>📋 Daily Itinerary</h2>
+              ${formatItinerary()}
+            </div>
+
+            <div class="footer">
+              <p>Trip plan generated on ${new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}</p>
+              <p>Have an amazing trip! 🎉</p>
+            </div>
+          </body>
+        </html>
+      `;
+    };
+
+    // Create and open print window
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    const htmlContent = createPDFContent();
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    // Wait for content to load, then trigger print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+        // Optional: close window after printing
+        printWindow.onafterprint = () => {
+          printWindow.close();
+        };
+      }, 500);
+    };
   };
 
   const getBudgetIcon = (budget) => {

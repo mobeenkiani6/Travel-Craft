@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, DollarSign, Users, ArrowRight, Plane } from 'lucide-react';
+import { MapPin, Calendar, DollarSign, Users, ArrowRight, Plane, AlertCircle } from 'lucide-react';
 import { useTrip } from '../contexts/TripContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -68,27 +68,82 @@ const PlanTrip = () => {
     travelers: ''
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  
   const navigate = useNavigate();
   const { generateTrip, setCurrentTrip, addTrip } = useTrip();
-  const { user } = useAuth();
+  const { 
+    user, 
+    loading: authLoading, 
+    authError, 
+    sessionActive, 
+    isAuthenticated, 
+    updateActivity,
+    clearError 
+  } = useAuth();
+
+  // Clear errors when component mounts or user changes
+  useEffect(() => {
+    setFormError('');
+    setShowAuthPrompt(false);
+    if (authError) {
+      clearError();
+    }
+  }, [user, clearError, authError]);
+
+  // Update activity when user interacts with form
+  const handleActivityUpdate = () => {
+    if (isAuthenticated()) {
+      updateActivity();
+    }
+  };
+
+  const validateForm = () => {
+    if (!formData.destination) {
+      setFormError('Please select a destination');
+      return false;
+    }
+    if (!formData.days || parseInt(formData.days) < 1 || parseInt(formData.days) > 30) {
+      setFormError('Please enter a valid number of days (1-30)');
+      return false;
+    }
+    if (!formData.budget) {
+      setFormError('Please select your budget preference');
+      return false;
+    }
+    if (!formData.travelers) {
+      setFormError('Please select who you\'re traveling with');
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
     
-    if (!user) {
-      alert('Please sign in to plan your trip');
+    // Check authentication status
+    if (!isAuthenticated() || !sessionActive) {
+      setShowAuthPrompt(true);
+      setFormError('Please sign in to plan your trip. Your session may have expired.');
       return;
     }
 
-    if (!formData.destination || !formData.days || !formData.budget || !formData.travelers) {
-      alert('Please fill in all fields');
+    // Validate form
+    if (!validateForm()) {
       return;
     }
 
     setIsGenerating(true);
     
-    // Simulate API call delay
-    setTimeout(() => {
+    try {
+      // Update activity before generating trip
+      updateActivity();
+      
+      // Simulate API call delay - replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       const trip = generateTrip(
         formData.destination,
         parseInt(formData.days),
@@ -98,9 +153,13 @@ const PlanTrip = () => {
       
       setCurrentTrip(trip);
       addTrip(trip);
-      setIsGenerating(false);
       navigate('/trip-plan');
-    }, 2000);
+    } catch (error) {
+      console.error('Error generating trip:', error);
+      setFormError('Failed to generate trip. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleInputChange = (field, value) => {
@@ -108,8 +167,49 @@ const PlanTrip = () => {
       ...prev,
       [field]: value
     }));
+    setFormError(''); // Clear error when user starts typing
+    handleActivityUpdate(); // Update session activity
   };
 
+  const handleSignInRedirect = () => {
+    // Save form data to sessionStorage before redirecting
+    sessionStorage.setItem('pendingTripForm', JSON.stringify(formData));
+    navigate('/signin', { state: { returnTo: '/plan-trip' } });
+  };
+
+  // Restore form data if user returns from sign in
+  useEffect(() => {
+    const savedFormData = sessionStorage.getItem('pendingTripForm');
+    if (savedFormData && isAuthenticated()) {
+      try {
+        const parsedData = JSON.parse(savedFormData);
+        setFormData(parsedData);
+        sessionStorage.removeItem('pendingTripForm');
+      } catch (error) {
+        console.error('Error restoring form data:', error);
+      }
+    }
+  }, [isAuthenticated]);
+
+  // Loading state during authentication check
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="mb-4"
+          >
+            <Plane className="h-12 w-12 text-blue-600 mx-auto" />
+          </motion.div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Trip generation loading state
   if (isGenerating) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
@@ -127,6 +227,9 @@ const PlanTrip = () => {
           <p className="text-gray-600">
             Our AI is analyzing thousands of options to create your personalized itinerary
           </p>
+          <div className="mt-4 text-sm text-gray-500">
+            Destination: {formData.destination} • {formData.days} days • {budgetOptions.find(b => b.id === formData.budget)?.title}
+          </div>
         </div>
       </div>
     );
@@ -147,7 +250,42 @@ const PlanTrip = () => {
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Just provide some basic information, and our trip planner will generate a customized itinerary based on your preferences.
           </p>
+          
+          {/* Authentication Status */}
+          {isAuthenticated() ? (
+            <div className="mt-4 text-green-600 text-sm flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              Signed in as {user?.email || user?.name}
+            </div>
+          ) : (
+            <div className="mt-4 text-amber-600 text-sm flex items-center justify-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              Sign in required to save and access your trip plans
+            </div>
+          )}
         </motion.div>
+
+        {/* Error Display */}
+        {(formError || authError) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl"
+          >
+            <div className="flex items-center gap-2 text-red-700">
+              <AlertCircle className="h-5 w-5" />
+              <span>{formError || authError}</span>
+            </div>
+            {showAuthPrompt && (
+              <button
+                onClick={handleSignInRedirect}
+                className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+              >
+                Go to Sign In
+              </button>
+            )}
+          </motion.div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-12">
           {/* Destination Selection */}
@@ -280,11 +418,32 @@ const PlanTrip = () => {
           >
             <button
               type="submit"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-12 py-4 rounded-full font-bold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:scale-105 flex items-center gap-2 mx-auto"
+              disabled={!isAuthenticated() || isGenerating}
+              className={`px-12 py-4 rounded-full font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:scale-105 flex items-center gap-2 mx-auto ${
+                isAuthenticated() && !isGenerating
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
-              Generate My Trip Plan
-              <ArrowRight className="h-5 w-5" />
+              {!isAuthenticated() ? (
+                <>Sign In Required</>
+              ) : (
+                <>
+                  Generate My Trip Plan
+                  <ArrowRight className="h-5 w-5" />
+                </>
+              )}
             </button>
+            
+            {!isAuthenticated() && (
+              <button
+                type="button"
+                onClick={handleSignInRedirect}
+                className="mt-4 text-blue-600 hover:text-blue-800 underline text-sm"
+              >
+                Sign in to continue
+              </button>
+            )}
           </motion.div>
         </form>
       </div>
