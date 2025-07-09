@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 
 // API calling functions (moved to server-side)
 async function callGeminiAPI(message) {
-  const API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyCQz9By_uq1zYMqlZbgnsQsTICSVi1zGZY';
+  const API_KEY = process.env.GEMINI_API_KEY;
   
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
     method: 'POST',
@@ -83,7 +83,7 @@ async function callGeminiAPI(message) {
 }
 
 async function callDeepSeekAPI(message) {
-  const API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-43a7ac8c183d491d83f1f3721550a324';
+  const API_KEY = process.env.DEEPSEEK_API_KEY;
   
   const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -122,7 +122,7 @@ async function callDeepSeekAPI(message) {
 }
 
 async function callVeniceAPI(message) {
-  const API_KEY = process.env.VENICE_API_KEY || 'ouGBnLcS_NThytsSiC03uptaqRB7a6JfyJhfTvWeiX';
+  const API_KEY = process.env.VENICE_API_KEY ;
   
   const response = await fetch('https://api.venice.ai/api/v1/chat/completions', {
     method: 'POST',
